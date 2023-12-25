@@ -4,6 +4,8 @@ from os import environ
 from urllib.parse import urljoin
 from dotenv import load_dotenv
 import shelve
+from parse_data import ParseData
+from operator import itemgetter
 
 load_dotenv(dotenv_path='.env', override=True)
 
@@ -112,15 +114,69 @@ class Ims():
     
     def getProfileData(self):
         response = self.session.get(self.profileUrl)
+        
+        profileData = ParseData.parseProfile(response.content)
+
+        return profileData
+    
+    def getAttandanceData(self, rollNo='', dept='', degree=''):
+        response = self.session.get(self.myActivitiesUrl)
 
         soup = bs4(response.content, 'html.parser')
-        import pdb
-        pdb.set_trace()
+        attandancePage = ''
+
+        for link in soup.find_all('a', {'target': 'data'}):
+            if link.text == 'Attendance Report':
+                attandancePage = link['href']
+                break
+        else:
+            print('Attandance Page not Found')
+            return
+
+        response = self.session.get(attandancePage)
+        soup = bs4(response.content, 'html.parser')
+
+        enc_year = soup.find_all('input', {'id': 'enc_year'})[0]['value']
+        enc_sem = soup.find_all('input', {'id': 'enc_sem'})[0]['value']
+
+        if not (rollNo or dept or degree):
+            rollNo = soup.find_all('input', {'name': 'recentitycode'})[0]['value']
+            dept = soup.find_all('input', {'name': 'dept'})[0]['value']
+            degree = soup.find_all('input', {'name': 'degree'})[0]['value']
+
+
+        data = {
+            'year': '2023-24',
+            'enc_year': enc_year,
+            'sem': '1',
+            'enc_sem': enc_sem,
+            'submit': 'Submit',
+            'recentitycode': rollNo,
+            'dept': dept,
+            'degree': degree,
+            'ename': '',
+            'ecode': '',
+        }
+
+        response = self.session.post(attandancePage, data=data)
+        
+        attandanceData = ParseData.parseAttandance(response.content)
+        
+        return attandanceData
+
 
 class User():
     def __init__(self):
-        pass
+        self.ims = Ims(persistentSession=True)
 
-ims = Ims(persistentSession=True)
-ims.getProfileData()
-#ims.loginToIms()
+        profileData = self.ims.getProfileData()
+
+        self.roll, self.name, self.dob, self.gender, self.category, self.branch, self.degree, self.section \
+            = itemgetter('Student ID', 'Student Name', 'DOB', 'Gender', 'Category', 'Branch Name', 'Degree', 'Section')\
+                (profileData)
+        
+        self.attandances = self.ims.getAttandanceData()
+
+user = User()
+import pdb
+pdb.set_trace()
