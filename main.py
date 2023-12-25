@@ -11,7 +11,6 @@ class Ims():
         self.username = environ['imsUsername']
         self.password = environ['imsPassword']
 
-        self.session = requests.Session()
 
         self.baseHeaders = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.6099.119 Safari/537.36',
@@ -25,23 +24,26 @@ class Ims():
             'Sec-Fetch-Site': 'same-origin',
         }
 
+        self.session = requests.Session()
+        self.session.headers.update(self.baseHeaders)
+
         self.baseUrl = 'https://www.imsnsit.org/imsnsit/'
 
         self.initialCookes = self.getInitialCookies()
         self.captchaImage, self.hrandNum = self.getLoginCaptcha()
 
     def getInitialCookies(self):
-        response = requests.get('https://www.imsnsit.org/imsnsit/', headers=self.baseHeaders)
-        return response.cookies.get_dict()
+        self.session.get('https://www.imsnsit.org/imsnsit/', headers=self.baseHeaders)
 
     def getLoginCaptcha(self):
-        
-        headers = self.baseHeaders.copy()
-        headers['Referer'] = 'https://www.imsnsit.org/imsnsit/'
-        headers['Sec-Fetch-User'] = '?1'
-        
-        response = requests.get('https://www.imsnsit.org/imsnsit/student_login110.php', cookies=self.initialCookes, headers=headers)
-        
+        self.session.headers.update(
+            {
+            'Referer': 'https://www.imsnsit.org/imsnsit/',
+            'Sec-Fetch-User': '?1'
+            }
+        )
+
+        response = self.session.get('https://www.imsnsit.org/imsnsit/student_login110.php')
         soup = bs4(response.content, 'html.parser')
         
         captcha = urljoin(self.baseUrl, soup.select_one('#captchaimg')['src'])
@@ -51,13 +53,16 @@ class Ims():
 
     def loginToIms(self):
 
-        headers = self.baseHeaders.copy()
-        headers['Referer'] = 'https://www.imsnsit.org/imsnsit/student_login.php'
-        headers['Content-Type'] = 'application/x-www-form-urlencoded'
-        headers['Origin'] = 'https://www.imsnsit.org'
-        headers['Upgrade-Insecure-Requests'] = '1'
-        headers['Sec-Fetch-Dest'] = 'frame'
-
+        self.session.headers.update(
+            {
+                'Referer': 'https://www.imsnsit.org/imsnsit/student_login.php',
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'Origin': 'https://www.imsnsit.org',
+                'Upgrade-Insecure-Requests': '1',
+                'Sec-Fetch-Dest': 'frame',
+            }
+        )
+        
         cap = input(f"Enter The Captch {self.captchaImage}: ")
         
         data = {
@@ -71,9 +76,16 @@ class Ims():
             'logintype': 'student',
         }
 
-        response = requests.post('https://www.imsnsit.org/imsnsit/student_login.php', cookies=self.initialCookes, headers=headers, data=data)
-        print(response.content)
-        print(response.cookies.get_dict())
+        response = self.session.post('https://www.imsnsit.org/imsnsit/student_login.php', data=data)
+    
+        import pdb
+        pdb.set_trace()
+
+        print('aa')
+
+class User():
+    def __init__(self):
+        pass
 
 ims = Ims()
 ims.loginToIms()
