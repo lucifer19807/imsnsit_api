@@ -48,7 +48,7 @@ class Ims():
             print(self.profileUrl)
 
     def getInitialCookies(self):
-        self.session.get('https://www.imsnsit.org/imsnsit/', headers=self.baseHeaders)
+        self.session.get(self.baseUrl, headers=self.baseHeaders)
 
     def getLoginCaptcha(self):
         self.session.headers.update(
@@ -175,7 +175,11 @@ class User():
             = itemgetter('Student ID', 'Student Name', 'DOB', 'Gender', 'Category', 'Branch Name', 'Degree', 'Section')\
                 (profileData)
         
-        self.attandances = self.ims.getAttandanceData()
+        self.attandances = self.ims.getAttandanceData(
+            rollNo=self.roll,
+            dept=self.branch,
+            degree=self.degree
+        )
 
 user = User()
 import pdb
