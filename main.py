@@ -32,6 +32,9 @@ class Ims():
         self.initialCookes = self.getInitialCookies()
         self.captchaImage, self.hrandNum = self.getLoginCaptcha()
 
+        self.profileUrl = ''
+        self.myActivitiesUrl = ''
+
     def getInitialCookies(self):
         self.session.get('https://www.imsnsit.org/imsnsit/', headers=self.baseHeaders)
 
@@ -77,11 +80,26 @@ class Ims():
         }
 
         response = self.session.post('https://www.imsnsit.org/imsnsit/student_login.php', data=data)
-    
-        import pdb
-        pdb.set_trace()
+        
+        if 'Please try again' in str(response.content):
+            print("Login Failed....")
 
-        print('aa')
+        soup = bs4(response.content, 'html.parser')
+        links = soup.find_all('a')
+
+        for link in links:
+            if link.get_text() == 'Profile':
+                self.profileUrl = link['href']
+            
+            if link.get_text() == 'My Activities':
+                self.myActivitiesUrl = link['href']
+
+        
+
+
+    
+    def getProfileData(self):
+        pass
 
 class User():
     def __init__(self):
