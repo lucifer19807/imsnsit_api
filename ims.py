@@ -236,7 +236,7 @@ class User():
     def __init__(self):
         self.ims = Ims()
         self.ims.authenticate()
-        self.ims.enrolledCourses()
+        
         profileData = self.ims.getProfileData()
 
         self.roll, self.name, self.dob, self.gender, self.category, self.branch, self.degree, self.section \
@@ -249,6 +249,6 @@ class User():
             degree=self.degree
         )
 
+        self.courses = self.ims.enrolledCourses()
+
 user = User()
-import pdb
-pdb.set_trace()
