@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 import shelve
 from parse_data import ParseData
 from operator import itemgetter
+import re
 
 load_dotenv(dotenv_path='.env', override=True)
 
@@ -27,7 +28,9 @@ class Ims():
         }
         self.baseUrl = 'https://www.imsnsit.org/imsnsit/'
 
-        self.session, self.profileUrl, self.myActivitiesUrl = self.getSession()
+        self.session, self.profileUrl, self.myActivitiesUrl, self.allLinks = self.getSession()
+
+        self.isAuthenticated = False
 
 
     def getSession(self):
@@ -36,36 +39,52 @@ class Ims():
             session = file['session']
             profileUrl = file['profile_url']
             myActivitiesUrl = file['activities_url']
+            allUrls = file['urls']
         except:
             session = requests.Session()
             session.headers.update(self.baseHeaders)
             profileUrl = ''
             myActivitiesUrl = ''
+            allUrls = {}
         finally:
             file.close()
         
-        return session, profileUrl, myActivitiesUrl
+        return session, profileUrl, myActivitiesUrl, allUrls
 
 
     def isUserAuthenticated(self):
-        response = str(self.session.get(self.profileUrl).content)
+        try:
+            response = str(self.session.get(self.profileUrl).content)
 
-        if 'Session expired' in response:
+            if 'Session expired' in response:
+                return False
+            
+            return True
+        except:
             return False
-        
-        return True
 
     def storeSession(self):
+        data = {
+            'session': self.session,
+            'profile_url': self.profileUrl,
+            'activities_url': self.myActivitiesUrl
+            }
+
+        self.store(data=data)
+        
+    def store(self, data):
         file = shelve.open('session_object')
-        file['session'] = self.session
-        file['profile_url'] = self.profileUrl
-        file['activities_url'] = self.myActivitiesUrl
+
+        for key,value in data.items():
+            file[key] = value
+            
         file.close()
 
     def authenticate(self, force=False):
 
         if not force:
             if self.isUserAuthenticated():
+                self.isAuthenticated = True
                 return
 
         self.session.get(self.baseUrl, headers=self.baseHeaders)  # Starts from baseUrl
@@ -111,6 +130,8 @@ class Ims():
                 self.myActivitiesUrl = link['href']
         
         self.storeSession()
+        self.getAllUrls()
+        self.isAuthenticated = True
         
 
     def getLoginCaptcha(self):
@@ -139,18 +160,7 @@ class Ims():
     
 
     def getAttandanceData(self, rollNo='', dept='', degree=''):
-        response = self.session.get(self.myActivitiesUrl)
-
-        soup = bs4(response.content, 'html.parser')
-        attandancePage = ''
-
-        for link in soup.find_all('a', {'target': 'data'}):
-            if link.text == 'Attendance Report':
-                attandancePage = link['href']
-                break
-        else:
-            print('Attandance Page not Found')
-            return
+        attandancePage = self.allLinks['attendanceReport']
 
         response = self.session.get(attandancePage)
         soup = bs4(response.content, 'html.parser')
@@ -183,12 +193,34 @@ class Ims():
         return attandanceData
 
     def getAllUrls(self):
+
+        def camelCase(s):
+            s = re.sub(r"(_|-)+", " ", s).title().replace(" ", "")
+            return ''.join([s[0].lower(), s[1:]])
+
         response = self.session.get(self.myActivitiesUrl)
 
         soup = bs4(response.content, 'html.parser')
 
-        import pdb
-        pdb.set_trace()
+        uncleanUrls = soup.find_all('a')
+        links = {}
+
+        for link in uncleanUrls:
+            if link['href'] == '#':
+                continuep
+
+            key = link.text # Ex. "Current Semester Registered Courses." or "tudent Transcript (CBCS)(NSIT)"
+            key = re.sub('[^0-9a-zA-Z]+', ' ', key)
+            key = camelCase(key)
+
+            links[key] = link['href']
+
+        self.store(
+            {'urls': links}
+            )
+
+        self.allLinks = links
+
 
     def enrolledCourses(self):
         pass
@@ -198,7 +230,7 @@ class User():
     def __init__(self):
         self.ims = Ims()
         self.ims.authenticate()
-        self.ims.getAllUrls()
+        
         profileData = self.ims.getProfileData()
 
         self.roll, self.name, self.dob, self.gender, self.category, self.branch, self.degree, self.section \
