@@ -39,3 +39,24 @@ class ParseData():
                 continue
 
         return data
+    
+    def parseCourseData(content):
+        data = {}
+
+        soup = bs4(content, 'html.parser')
+
+        table = soup.find_all('table', {'class': 'plum_fieldbig'})[0]
+        rows = table.find_all('tr')[2:]
+
+        for row in rows:
+            _, subjectCode, subjectName, _, group, _, credits, _, imsApproved, userApproved = [element.text for element in row.find_all('td')]
+
+            data[subjectCode] = {
+                'subjectName': subjectName,
+                'group': group,
+                'credits': credits,
+                'imsApproved': imsApproved,
+                'userApproved': userApproved
+            }
+        
+        return data

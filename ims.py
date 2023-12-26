@@ -223,14 +223,20 @@ class Ims():
 
 
     def enrolledCourses(self):
-        pass
+        pageUrl = self.allLinks['currentSemesterRegisteredCourses']
+
+        response = self.session.get(pageUrl)
+
+        enrolledCourses = ParseData.parseCourseData(response.content)
+
+        return enrolledCourses
 
 
 class User():
     def __init__(self):
         self.ims = Ims()
         self.ims.authenticate()
-        
+        self.ims.enrolledCourses()
         profileData = self.ims.getProfileData()
 
         self.roll, self.name, self.dob, self.gender, self.category, self.branch, self.degree, self.section \
